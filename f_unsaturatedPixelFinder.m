@@ -1,19 +1,29 @@
-function [ normalPixel ] = f_unsaturatedPixelFinder( Y, saturationValue )
-%F_SATURATIONINDICATOR Summary of this function goes here
-%   Detailed explanation goes here
+function normalPixels = f_unsaturatedPixelFinder(Y, saturationValue, saturationThreshold, saturationTime)
 
-% normalization
-    [d1,d2,T] = size(Y);
-    d = d1*d2;
-    Y = reshape(Y,d,T)/saturationValue;
+% finds the pixels/voxels that are saturated and returns the ones that are
+% not. A pixel is defined as saturated if its observed fluorescence is
+% above saturationThreshold*saturationValue at least saturationTime
+% fraction of the time.
 
-% find those pixel with its value at 95% of the maximum value
-    idx = find(Y<0.9);
-    Y(idx) = 0;
-    Y(setdiff(1:d1*d2*T,idx)) = 1;
-    
-    temp = sum(Y,2);
-    normalPixel = find(temp<T*0.005);
-    
+% Written by Weijian Yang and Eftychios A. Pnevmatikakis, based on an idea
+% from Weijian Yang and Darcy Peterka
+
+T = size(Y,ndims(Y));
+if ndims(Y) > 2
+    Y = reshape(Y,numel(Y)/T,T);
 end
 
+if nargin < 4 || isempty(saturationTime)
+    saturationTime = 0.005;
+end
+
+if nargin < 3 || isempty(saturationThreshold)
+    saturationThreshold = 0.9;
+end
+
+if nargin < 2 || isempty(saturationValue)
+    saturationValue = 2^nextpow2(max(Y(:)))-1;
+end
+
+Ysat = (Y >= saturationThreshold*saturationValue);
+normalPixels = find(mean(Ysat,2)<saturationTime);
